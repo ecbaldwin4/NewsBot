@@ -4,6 +4,7 @@ import csv
 import json
 import time
 import os
+import random
 
 import discord
 from discord.ext import commands
@@ -23,10 +24,12 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-class GroundNewsFeed:
-    def __init__(self, post_ids_file="seen_post_ids.csv"):
+class NewsFeed:
+    def __init__(self, post_ids_file="seen_post_ids.csv", sources_file="sources.csv"):
         self.post_ids_file = post_ids_file
+        self.sources_file = sources_file
         self.seen_post_ids = self.load_seen_post_ids()
+        self.sources = self.load_sources()
 
     def load_seen_post_ids(self):
         try:
@@ -49,10 +52,22 @@ class GroundNewsFeed:
         self.seen_post_ids.add(post_id)
         self.save_seen_post_ids()
 
-    def get_latest_post(self):
-        url = "https://www.reddit.com/user/groundnewsfeed.json"
-        headers = {"User-Agent": "groundnews_feed_monitor"}
-        response = requests.get(url, headers=headers)
+    def load_sources(self):
+        sources = {}
+        with open(self.sources_file, "r") as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip header row
+            for row in reader:
+                author, json_url = row
+                sources[json_url] = author
+        return sources
+
+    def get_random_source(self):
+        return random.choice(list(self.sources.items()))
+
+    def get_latest_post(self, json_url, author):
+        headers = {"User-Agent": "news_feed_monitor"}
+        response = requests.get(json_url, headers=headers)
 
         if response.status_code != 200:
             print(f"Failed to retrieve data. Status code: {response.status_code}")
@@ -65,15 +80,16 @@ class GroundNewsFeed:
         threshold_timestamp = int(time.time()) - 86400
 
         for post in posts:
-            if post["data"]["author"] == "groundnewsfeed":
-                post_id = post["data"]["id"]
-                title = post["data"]["title"]
-                url = post["data"]["url_overridden_by_dest"]
-                created_utc = post["data"]["created_utc"]
+            post_id = post["data"]["id"]
+            title = post["data"]["title"]
+            url = post["data"]["url_overridden_by_dest"]
+            created_utc = post["data"]["created_utc"]
+            post_author = post["data"]["author"]
 
-                if created_utc < threshold_timestamp:
-                    continue  # Skip posts older than 24 hours
+            if created_utc < threshold_timestamp:
+                continue  # Skip posts older than 24 hours
 
+            if author == "any" or post_author == author:
                 if not self.has_seen_post(post_id):
                     self.mark_post_as_seen(post_id)
                     return title, url
@@ -96,9 +112,10 @@ async def on_ready():
             print(f'    - {channel.name} (ID: {channel.id})')
 
     target_channel_id = CHANNEL_ID
-    feed = GroundNewsFeed()
+    feed = NewsFeed()
     while True:
-        latest_post = feed.get_latest_post()
+        json_url, author = feed.get_random_source()
+        latest_post = feed.get_latest_post(json_url, author)
         if latest_post:
             title, url = latest_post
             target_channel = bot.get_channel(target_channel_id)
@@ -107,6 +124,7 @@ async def on_ready():
             else:
                 print(f"Failed to find target channel with ID {target_channel_id}")
         await asyncio.sleep(60)  # Wait 1 minute before checking again
+
 
 # Command to make the bot say hello
 @bot.command(name='hello')
