@@ -1,2 +1,3 @@
 bot-env/
 seen_post_ids.csv
+token.env
