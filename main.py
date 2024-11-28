@@ -10,10 +10,9 @@ from discord.ext import commands
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
+load_dotenv('token.env')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-CHANNEL_ID = os.getnev('CHANNEL_ID')
+CHANNEL_ID = os.getenv('CHANNEL_ID')
 
 # Create a new bot instance with a specified command prefix
 intents = discord.Intents.default()
