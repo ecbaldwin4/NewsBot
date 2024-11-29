@@ -135,4 +135,4 @@ async def hello(ctx):
         print("Bot does not have permission to send messages in this channel.")
 
 # Run the bot with the token
-bot.run('MTMxMDg0ODY1NTI4MDA0NjEzNw.G21ocw.d1f3xoEAghpMafdVDmi4um9gJD5LswiWkHsmz4')
+bot.run('MTMxMDg0ODY1NTI4MDA0NjEzNw.GsWOZv.QXOMmgzeYSJMbS2wIhC-polqyQKYvVz3VskTYI')
