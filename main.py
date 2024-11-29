@@ -1,19 +1,13 @@
 import asyncio
-import requests
-import csv
-import json
-import time
 import os
-import random
-
 import discord
 from discord.ext import commands
+import csv
 
 from dotenv import load_dotenv
 
 load_dotenv('token.env')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-CHANNEL_ID = os.getenv('CHANNEL_ID')
 
 # Create a new bot instance with a specified command prefix
 intents = discord.Intents.default()
@@ -22,80 +16,39 @@ intents.presences = False
 intents.members = True  # Server Members Intent
 intents.message_content = True
 
+from newsfeed import NewsFeed
+
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-class NewsFeed:
-    def __init__(self, post_ids_file="seen_post_ids.csv", sources_file="sources.csv"):
-        self.post_ids_file = post_ids_file
-        self.sources_file = sources_file
-        self.seen_post_ids = self.load_seen_post_ids()
-        self.sources = self.load_sources()
+# Dictionary to store the target channel for each guild
+target_channels = {}
 
-    def load_seen_post_ids(self):
-        try:
-            with open(self.post_ids_file, "r") as file:
-                reader = csv.reader(file)
-                return {row[0] for row in reader}
-        except FileNotFoundError:
-            return set()
-
-    def save_seen_post_ids(self):
-        with open(self.post_ids_file, "w", newline="") as file:
-            writer = csv.writer(file)
-            for post_id in self.seen_post_ids:
-                writer.writerow([post_id])
-
-    def has_seen_post(self, post_id):
-        return post_id in self.seen_post_ids
-
-    def mark_post_as_seen(self, post_id):
-        self.seen_post_ids.add(post_id)
-        self.save_seen_post_ids()
-
-    def load_sources(self):
-        sources = {}
-        with open(self.sources_file, "r") as file:
+# Load target channels from CSV file
+def load_target_channels():
+    try:
+        with open('target_channels.csv', 'r') as file:
             reader = csv.reader(file)
-            next(reader)  # Skip header row
             for row in reader:
-                author, json_url = row
-                sources[json_url] = author
-        return sources
+                guild_id, channel_id = int(row[0]), int(row[1])
+                target_channels[guild_id] = channel_id
+    except FileNotFoundError:
+        pass
 
-    def get_random_source(self):
-        return random.choice(list(self.sources.items()))
+# Save target channels to CSV file
+def save_target_channels():
+    with open('target_channels.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        for guild_id, channel_id in target_channels.items():
+            writer.writerow([guild_id, channel_id])
 
-    def get_latest_post(self, json_url, author):
-        headers = {"User-Agent": "news_feed_monitor"}
-        response = requests.get(json_url, headers=headers)
+load_target_channels()
 
-        if response.status_code != 200:
-            print(f"Failed to retrieve data. Status code: {response.status_code}")
-            return None
-
-        data = json.loads(response.text)
-        posts = data["data"]["children"]
-
-        # Calculate the threshold timestamp for posts older than 24 hours
-        threshold_timestamp = int(time.time()) - 86400
-
-        for post in posts:
-            post_id = post["data"]["id"]
-            title = post["data"]["title"]
-            url = post["data"]["url_overridden_by_dest"]
-            created_utc = post["data"]["created_utc"]
-            post_author = post["data"]["author"]
-
-            if created_utc < threshold_timestamp:
-                continue  # Skip posts older than 24 hours
-
-            if author == "any" or post_author == author:
-                if not self.has_seen_post(post_id):
-                    self.mark_post_as_seen(post_id)
-                    return title, url
-
-        return None
-
+@bot.event
+async def on_guild_join(guild):
+    # When the bot joins a new guild, send a message to the system channel
+    system_channel = guild.system_channel
+    if system_channel:
+        await system_channel.send("Hello! I'm a news bot. Please use the `!setchannel` command to choose a channel for me to post news in.")
 
 @bot.event
 async def on_ready():
@@ -111,20 +64,49 @@ async def on_ready():
         for channel in guild.text_channels:
             print(f'    - {channel.name} (ID: {channel.id})')
 
-    target_channel_id = 1311614581092778014
+@bot.command(name='setchannel')
+@commands.has_permissions(manage_guild=True)
+async def setchannel(ctx, channel: discord.TextChannel):
+    # Set the target channel for the current guild
+    target_channels[ctx.guild.id] = channel.id
+    save_target_channels()
+    await ctx.send(f"Target channel set to {channel.mention}.")
+
+@bot.command(name='getchannel')
+@commands.has_permissions(manage_guild=True)
+async def getchannel(ctx):
+    # Get the target channel for the current guild
+    target_channel_id = target_channels.get(ctx.guild.id)
+    if target_channel_id:
+        target_channel = ctx.guild.get_channel(target_channel_id)
+        if target_channel:
+            await ctx.send(f"Target channel is {target_channel.mention}.")
+        else:
+            await ctx.send("Target channel not found.")
+    else:
+        await ctx.send("No target channel set.")
+
+async def post_news():
+    await bot.wait_until_ready()
     feed = NewsFeed()
     while True:
-        json_url, author = feed.get_random_source()
-        latest_post = feed.get_latest_post(json_url, author)
-        if latest_post:
-            title, url = latest_post
-            target_channel = bot.get_channel(target_channel_id)
-            if target_channel:
-                await target_channel.send(f"Title: {title}\nURL: {url}")
-            else:
-                print(f"Failed to find target channel with ID {target_channel_id}")
-        await asyncio.sleep(300)  # Wait 1 minute before checking again
+        if target_channels:  # Check if target_channels is not empty
+            for guild_id, channel_id in target_channels.items():
+                guild = bot.get_guild(guild_id)
+                if guild:
+                    target_channel = guild.get_channel(channel_id)
+                    if target_channel:
+                        json_url, author = feed.get_random_source()
+                        latest_post = feed.get_latest_post(json_url, author)
+                        if latest_post:
+                            title, url = latest_post
+                            await target_channel.send(f"Title: {title}\nURL: {url}")
+        await asyncio.sleep(30)  # Wait 30 seconds before checking again
 
+@bot.event
+async def on_ready():
+    print(f'{bot.user.name} has connected to Discord!')
+    bot.loop.create_task(post_news())
 
 # Command to make the bot say hello
 @bot.command(name='hello')
@@ -135,4 +117,7 @@ async def hello(ctx):
         print("Bot does not have permission to send messages in this channel.")
 
 # Run the bot with the token
-bot.run('MTMxMDg0ODY1NTI4MDA0NjEzNw.GsWOZv.QXOMmgzeYSJMbS2wIhC-polqyQKYvVz3VskTYI')
+async def main():
+    await bot.start(DISCORD_BOT_TOKEN)
+
+asyncio.run(main())
