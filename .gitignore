@@ -1,6 +1,6 @@
 bot-env/
 seen_post_ids.csv
 post_ids_and_urls.csv
-token.env
 target_channels.csv
+token.env
 __pycache__/
