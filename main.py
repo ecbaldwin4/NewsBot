@@ -50,20 +50,6 @@ async def on_guild_join(guild):
     if system_channel:
         await system_channel.send("Hello! I'm a news bot. Please use the `!setchannel` command to choose a channel for me to post news in.")
 
-@bot.event
-async def on_ready():
-    print(f'{bot.user.name} has connected to Discord!')
-    
-    # Print the guilds (servers) the bot is in
-    print('Guilds:')
-    for guild in bot.guilds:
-        print(f'- {guild.name} (ID: {guild.id})')
-        
-        # Print the text channels in each guild
-        print('  Text Channels:')
-        for channel in guild.text_channels:
-            print(f'    - {channel.name} (ID: {channel.id})')
-
 @bot.command(name='setchannel')
 @commands.has_permissions(manage_guild=True)
 async def setchannel(ctx, channel: discord.TextChannel):
@@ -109,25 +95,24 @@ def save_post_ids_and_urls():
 
 load_post_ids_and_urls()
 
+
 async def post_news():
     await bot.wait_until_ready()
     feed = NewsFeed()
     while True:
-        if target_channels:  # Check if target_channels is not empty
-            for guild_id, channel_id in target_channels.items():
-                guild = bot.get_guild(guild_id)
-                if guild:
-                    target_channel = guild.get_channel(channel_id)
-                    if target_channel:
-                        json_url, author = feed.get_random_source()
-                        print(json_url, author)
-                        latest_post = feed.get_latest_post(json_url, author)
-                        if latest_post:
-                            title, url = latest_post
+        if target_channels:  
+            latest_post = feed.get_latest_post_from_any_source()
+            if latest_post:
+                title, url = latest_post
+                for guild_id, channel_id in target_channels.items():
+                    guild = bot.get_guild(guild_id)
+                    if guild:
+                        target_channel = guild.get_channel(channel_id)
+                        if target_channel:
                             message = await target_channel.send(f"Title: {title}\nURL: {url}")
                             post_ids_and_urls[str(message.id)] = url
                             save_post_ids_and_urls()
-        await asyncio.sleep(300)  # Wait 300 seconds before checking again
+        await asyncio.sleep(300)  
 
 @bot.event
 async def on_ready():

@@ -45,6 +45,13 @@ class NewsFeed:
 
     def get_random_source(self):
         return random.choice(list(self.sources.items()))
+    
+    def get_latest_post_from_any_source(self):
+        for json_url, author in self.sources.items():
+            latest_post = self.get_latest_post(json_url, author)
+            if latest_post:
+                return latest_post
+        return None
 
     def get_latest_post(self, json_url, author):
         headers = {"User-Agent": "news_feed_monitor"}
