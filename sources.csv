@@ -1,3 +1,6 @@
 author, json_url
 any,https://www.reddit.com/r/worldnews.json
-worldnewsfeed,https://www.reddit.com/r/groundnews.json
+groundnewsfeed,https://www.reddit.com/r/groundnews.json
+any,https://www.reddit.com/r/geopolitics.json
+any,https://www.reddit.com/r/neutralnews.json
+any,https://www.reddit.com/r/politics.json
