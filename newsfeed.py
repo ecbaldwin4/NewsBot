@@ -4,42 +4,33 @@ import random
 import requests
 import time
 
+
 class NewsFeed:
     def __init__(self, post_ids_file="seen_post_ids.csv", sources_file="sources.csv"):
         self.post_ids_file = post_ids_file
         self.sources_file = sources_file
         self.seen_post_ids = self.load_seen_post_ids()
         self.sources = self.load_sources()
-        self.remove_old_seen_ids()
 
     def load_seen_post_ids(self):
         try:
             with open(self.post_ids_file, "r") as file:
                 reader = csv.reader(file)
-                seen_ids = {}
-                for row in reader:
-                    post_id, timestamp = row
-                    seen_ids[post_id] = int(timestamp)
-                return seen_ids
+                return {row[0] for row in reader}
         except FileNotFoundError:
-            return {}
+            return set()
 
     def save_seen_post_ids(self):
         with open(self.post_ids_file, "w", newline="") as file:
             writer = csv.writer(file)
-            for post_id, timestamp in self.seen_post_ids.items():
-                writer.writerow([post_id, timestamp])
+            for post_id in self.seen_post_ids:
+                writer.writerow([post_id])
 
     def has_seen_post(self, post_id):
         return post_id in self.seen_post_ids
 
     def mark_post_as_seen(self, post_id):
-        self.seen_post_ids[post_id] = int(time.time())
-        self.save_seen_post_ids()
-
-    def remove_old_seen_ids(self):
-        threshold_timestamp = int(time.time()) - 86400
-        self.seen_post_ids = {post_id: timestamp for post_id, timestamp in self.seen_post_ids.items() if timestamp > threshold_timestamp}
+        self.seen_post_ids.add(post_id)
         self.save_seen_post_ids()
 
     def load_sources(self):
