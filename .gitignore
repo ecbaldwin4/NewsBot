@@ -5,3 +5,4 @@ target_channels.csv
 sources.csv
 token.env
 __pycache__/
+ai.py
