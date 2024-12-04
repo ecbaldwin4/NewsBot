@@ -4,9 +4,8 @@ import random
 import requests
 import time
 
-
 class NewsFeed:
-    def __init__(self, post_ids_file="seen_post_ids.csv", sources_file="sources.csv"):
+    def __init__(self, post_ids_file="data/seen_post_ids.csv", sources_file="data/sources.csv"):
         self.post_ids_file = post_ids_file
         self.sources_file = sources_file
         self.seen_post_ids = self.load_seen_post_ids()
@@ -16,21 +15,27 @@ class NewsFeed:
         try:
             with open(self.post_ids_file, "r") as file:
                 reader = csv.reader(file)
-                return {row[0] for row in reader}
+                seen_post_ids = {}
+                for row in reader:
+                    post_id, timestamp = row
+                    seen_post_ids[post_id] = float(timestamp)
+                return seen_post_ids
         except FileNotFoundError:
-            return set()
+            return {}
 
     def save_seen_post_ids(self):
         with open(self.post_ids_file, "w", newline="") as file:
             writer = csv.writer(file)
-            for post_id in self.seen_post_ids:
-                writer.writerow([post_id])
+            current_time = time.time()
+            for post_id, timestamp in self.seen_post_ids.items():
+                if current_time - timestamp < 86400:  # 86400 seconds in 24 hours
+                    writer.writerow([post_id, timestamp])
 
     def has_seen_post(self, post_id):
         return post_id in self.seen_post_ids
 
     def mark_post_as_seen(self, post_id):
-        self.seen_post_ids.add(post_id)
+        self.seen_post_ids[post_id] = time.time()
         self.save_seen_post_ids()
 
     def load_sources(self):

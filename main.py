@@ -3,11 +3,16 @@ import os
 import discord
 from discord.ext import commands
 import csv
+import time
 import article_json_getter
 from dotenv import load_dotenv
 
-load_dotenv('token.env')
+load_dotenv('.env')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+TARGET_CHANNELS_FILE = 'data/target_channels.csv'
+POST_IDS_AND_URLS_FILE = 'data/post_ids_and_urls.csv'
+SEEN_POST_IDS_FILE = 'data/seen_post_ids.csv'
+SOURCES_FILE = 'data/sources.csv'
 
 # Create a new bot instance with a specified command prefix
 intents = discord.Intents.default()
@@ -26,7 +31,7 @@ target_channels = {}
 # Load target channels from CSV file
 def load_target_channels():
     try:
-        with open('target_channels.csv', 'r') as file:
+        with open(TARGET_CHANNELS_FILE, 'r') as file:
             reader = csv.reader(file)
             for row in reader:
                 guild_id, channel_id = int(row[0]), int(row[1])
@@ -36,7 +41,7 @@ def load_target_channels():
 
 # Save target channels to CSV file
 def save_target_channels():
-    with open('target_channels.csv', 'w', newline='') as file:
+    with open(TARGET_CHANNELS_FILE, 'w', newline='') as file:
         writer = csv.writer(file)
         for guild_id, channel_id in target_channels.items():
             writer.writerow([guild_id, channel_id])
@@ -78,23 +83,27 @@ post_ids_and_urls = {}
 # Load post IDs and URLs from CSV file
 def load_post_ids_and_urls():
     try:
-        with open('post_ids_and_urls.csv', 'r') as file:
+        with open(POST_IDS_AND_URLS_FILE, 'r') as file:
             reader = csv.reader(file)
             for row in reader:
-                post_id, url = row
-                post_ids_and_urls[post_id] = url
+                post_id, url, timestamp = row
+                post_ids_and_urls[post_id] = (url, float(timestamp))
     except FileNotFoundError:
         pass
 
 # Save post IDs and URLs to CSV file
 def save_post_ids_and_urls():
-    with open('post_ids_and_urls.csv', 'w', newline='') as file:
+    with open(POST_IDS_AND_URLS_FILE, 'w', newline='') as file:
         writer = csv.writer(file)
-        for post_id, url in post_ids_and_urls.items():
-            writer.writerow([post_id, url])
+        current_time = time.time()
+        for post_id, (url, timestamp) in post_ids_and_urls.items():
+            if current_time - timestamp < 86400:  # 86400 seconds in 24 hours
+                writer.writerow([post_id, url, timestamp])
 
 load_post_ids_and_urls()
 
+import similarity_checker
+from similarity_checker import headline_is_similar
 
 async def post_news():
     await bot.wait_until_ready()
@@ -104,15 +113,19 @@ async def post_news():
             latest_post = feed.get_latest_post_from_any_source()
             if latest_post:
                 title, url = latest_post
-                for guild_id, channel_id in target_channels.items():
-                    guild = bot.get_guild(guild_id)
-                    if guild:
-                        target_channel = guild.get_channel(channel_id)
-                        if target_channel:
-                            message = await target_channel.send(f"Title: {title}\nURL: {url}")
-                            post_ids_and_urls[str(message.id)] = url
-                            save_post_ids_and_urls()
-        await asyncio.sleep(300)  
+                post_headline = headline_is_similar(title)
+                if post_headline:
+                    for guild_id, channel_id in target_channels.items():
+                        guild = bot.get_guild(guild_id)
+                        if guild:
+                            target_channel = guild.get_channel(channel_id)
+                            if target_channel:
+                                message = await target_channel.send(f"Title: {title}\nURL: {url}")
+                                post_ids_and_urls[str(message.id)] = (url, time.time())
+                                save_post_ids_and_urls()
+                else:
+                    continue
+        await asyncio.sleep(300)   
 
 @bot.event
 async def on_ready():
@@ -126,32 +139,6 @@ async def hello(ctx):
         await ctx.send(f'Hello {ctx.author.mention}! I am online.')
     except discord.Forbidden:
         print("Bot does not have permission to send messages in this channel.")
-
-
-""" #### THIS FUNCTION IS FOR FUTURE AI IMPLEMENTATION. 
-NOTE
-WHEN A NEW POST IS SEEN AND POSTED IN DISCORD, POST_IDS_AND_URLS.CSV TAKE THE DISCORD BOT'S POST ID AND ASSOCIATES WITH THE URL IT POSTED.
-LATER, IF SOMEONE REPLIES TO THE POST, THE URL CAN BE USED ALONG WITH THE JSON ARTICLE TEXT GETTER FUNCTION TO PROVIDE THE TEXT OF THE ARTICLE TO AN AI. 
-THE AI CAN THEN PROVIDE A SUMMARY OF THE ARTICLE. THIS SUMMARY CAN BE USED FOR JUST SUMMARIZATION, OR THE SUMMARIZATION CAN BE STORED FOR CHAT LOGS FOR A FUTURE "DEBATEBOT"
-
-@bot.event
-async def on_message(message):
-    # Check if the message is a reply to one of the bot's posts
-    if message.reference and message.reference.resolved.author == bot.user:
-        post_id = str(message.reference.resolved.id)
-        # Check if the post ID is in the post_ids_and_urls dictionary
-        if post_id in post_ids_and_urls:
-            url = post_ids_and_urls[post_id]
-            
-            # Call the get_article_text function from article_json_getter.py
-            from article_json_getter import get_article_text_from_json
-            article_text_result = get_article_text_from_json(url)
-            print(article_text_result)
-            await message.reply(article_text_result)
-    
-    # Call the on_message event from the commands extension
-    await bot.process_commands(message)
-""" 
 
 # Run the bot with the token
 async def main():
