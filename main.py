@@ -128,7 +128,7 @@ async def post_news():
                     continue
             else:
                 print("No posts found...")
-        await asyncio.sleep(120)   
+        await asyncio.sleep(240)   
 
 @bot.event
 async def on_ready():

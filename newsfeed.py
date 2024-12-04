@@ -55,6 +55,7 @@ class NewsFeed:
         for json_url, author in self.sources.items():
             latest_post = self.get_latest_post(json_url, author)
             if latest_post:
+                print(f"Latest post found from {json_url}")
                 return latest_post
         return None
 

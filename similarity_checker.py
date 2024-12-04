@@ -5,7 +5,7 @@ import csv
 import time
 
 HEADLINES = 'data/headlines.csv'
-SIMILARITY_THRESHOLD = 0.9
+SIMILARITY_THRESHOLD = 0.7
 
 def is_csv_file_empty(filename):
     with open(filename, 'r') as file:
@@ -50,10 +50,10 @@ def headline_is_similar(headline):
             compare_headline = np.array(compare_headline['embedding']).reshape(1,-1)
             similarity = cosine_similarity(encoded_headline, compare_headline)
             if similarity > SIMILARITY_THRESHOLD:
-                print(headline, "::", hd[0])
+                print(headline, "::", hd)
                 print("Not posting. Too similar: ", similarity)
                 return False
         insert_headline(HEADLINES, headline)
         print(headline)
-        print("Posting. ", similarity)
+        print("Posting.")
     return True
