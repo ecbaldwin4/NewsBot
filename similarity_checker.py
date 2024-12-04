@@ -27,7 +27,17 @@ def insert_headline(filename, headline):
         timestamp = time.time()
         writer.writerow([headline, timestamp])
 
+def remove_old_headlines(filename):
+    current_time = time.time()
+    with open(filename, 'r') as file:
+        reader = csv.reader(file)
+        data = [row for row in reader if current_time - float(row[1]) < 172800]  # 172800 seconds in 48 hours
+    with open(filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+
 def headline_is_similar(headline):
+    remove_old_headlines(HEADLINES)
     if is_csv_file_empty(HEADLINES):
         insert_headline(HEADLINES, headline)
     else:
@@ -35,15 +45,14 @@ def headline_is_similar(headline):
         encoded_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{headline}")
         encoded_headline = np.array(encoded_headline['embedding']).reshape(1,-1)
         for hd in headlines:
-            compare_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{hd}")
+            compare_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{hd[0]}")
             compare_headline = np.array(compare_headline['embedding']).reshape(1,-1)
             similarity = cosine_similarity(encoded_headline, compare_headline)
             if similarity > 0.6:
-                print(headline, "::", hd)
+                print(headline, "::", hd[0])
                 print("Not posting. Too similar: ", similarity)
                 return False
         insert_headline(HEADLINES, headline)
         print(headline)
         print("Posting.")
     return True
-            
