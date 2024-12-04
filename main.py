@@ -109,6 +109,7 @@ async def post_news():
     await bot.wait_until_ready()
     feed = NewsFeed()
     while True:
+        print("Checking for posts...")
         if target_channels:  
             latest_post = feed.get_latest_post_from_any_source()
             if latest_post:
@@ -125,7 +126,9 @@ async def post_news():
                                 save_post_ids_and_urls()
                 else:
                     continue
-        await asyncio.sleep(300)   
+            else:
+                print("No posts found...")
+        await asyncio.sleep(120)   
 
 @bot.event
 async def on_ready():
