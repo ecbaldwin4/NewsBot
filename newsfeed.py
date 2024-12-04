@@ -52,11 +52,16 @@ class NewsFeed:
         return random.choice(list(self.sources.items()))
     
     def get_latest_post_from_any_source(self):
-        for json_url, author in self.sources.items():
+        # Create a copy of the sources list and shuffle it
+        shuffled_sources = list(self.sources.items())
+        random.shuffle(shuffled_sources)
+
+        for json_url, author in shuffled_sources:
             latest_post = self.get_latest_post(json_url, author)
             if latest_post:
                 print(f"Latest post found from {json_url}")
                 return latest_post
+
         return None
 
     def get_latest_post(self, json_url, author):
