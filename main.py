@@ -102,8 +102,8 @@ def save_post_ids_and_urls():
 
 load_post_ids_and_urls()
 
-import similarity_checker
-from similarity_checker import headline_is_similar
+from headlinemanager import HeadlineManager
+headline_manager = HeadlineManager('data/headlines.csv')
 
 async def post_news():
     await bot.wait_until_ready()
@@ -114,7 +114,7 @@ async def post_news():
             latest_post = feed.get_latest_post_from_any_source()
             if latest_post:
                 title, url = latest_post
-                post_headline = headline_is_similar(title)
+                post_headline = headline_manager.headline_is_similar(title)
                 if post_headline:
                     for guild_id, channel_id in target_channels.items():
                         guild = bot.get_guild(guild_id)
