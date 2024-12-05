@@ -30,6 +30,7 @@ class HeadlineManager:
             writer.writerows(self.headlines)
 
     def headline_is_similar(self, headline):
+        headline = headline.replace('\n', ' ')  # Remove newline characters
         self.headlines = self.remove_old_headlines(self.headlines)
         encoded_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{headline}")
         encoded_headline = np.array(encoded_headline['embedding']).reshape(1,-1)
