@@ -121,7 +121,7 @@ async def post_news():
                         if guild:
                             target_channel = guild.get_channel(channel_id)
                             if target_channel:
-                                message = await target_channel.send(url)
+                                message = await target_channel.send(f"Title: {title}\nURL: {url}")
                                 post_ids_and_urls[str(message.id)] = (url, time.time())
                                 save_post_ids_and_urls()
                 else:

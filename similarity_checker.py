@@ -23,7 +23,7 @@ def read_csv(filename):
     return data
 
 def insert_headline(filename, headline):
-    with open(filename, 'a', newline='') as file:
+    with open(filename, 'a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         timestamp = time.time()
         writer.writerow([headline, timestamp])
