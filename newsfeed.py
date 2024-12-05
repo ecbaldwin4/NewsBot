@@ -65,6 +65,13 @@ class NewsFeed:
         return None
 
     def get_latest_post(self, json_url, author):
+        # Load banned keywords from CSV
+        banned_keywords = set()
+        with open('data/banned_keywords.csv', 'r') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                banned_keywords.update(row)
+
         headers = {"User-Agent": "news_feed_monitor"}
         response = requests.get(json_url, headers=headers)
 
@@ -94,7 +101,8 @@ class NewsFeed:
                         self.mark_post_as_seen(post_id)  # Mark as seen and skip
                         continue
 
-                    if "reddit" in url.lower():
+                    # Check if the URL contains any banned keywords
+                    if any(keyword.lower() in url.lower() for keyword in banned_keywords):
                         self.mark_post_as_seen(post_id)  # Mark as seen but don't return
                         continue
 

@@ -5,7 +5,7 @@ import csv
 import time
 
 HEADLINES = 'data/headlines.csv'
-SIMILARITY_THRESHOLD = 0.7
+SIMILARITY_THRESHOLD = 0.83
 
 def is_csv_file_empty(filename):
     with open(filename, 'r') as file:

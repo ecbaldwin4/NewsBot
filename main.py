@@ -121,14 +121,14 @@ async def post_news():
                         if guild:
                             target_channel = guild.get_channel(channel_id)
                             if target_channel:
-                                message = await target_channel.send(f"Title: {title}\nURL: {url}")
+                                message = await target_channel.send(url)
                                 post_ids_and_urls[str(message.id)] = (url, time.time())
                                 save_post_ids_and_urls()
                 else:
                     continue
             else:
                 print("No posts found...")
-        await asyncio.sleep(240)   
+        await asyncio.sleep(240)
 
 @bot.event
 async def on_ready():
@@ -142,6 +142,17 @@ async def hello(ctx):
         await ctx.send(f'Hello {ctx.author.mention}! I am online.')
     except discord.Forbidden:
         print("Bot does not have permission to send messages in this channel.")
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    if "war crime" in message.content.lower():
+        await message.channel.send("It's never a war crime the first time.")
+        await message.add_reaction("🇨🇦")
+
+    await bot.process_commands(message)
 
 # Run the bot with the token
 async def main():
