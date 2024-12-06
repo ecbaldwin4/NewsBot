@@ -25,9 +25,13 @@ class HeadlineManager:
         return [hd for hd in headlines if current_time - hd[1] < 172800]
 
     def write_csv(self):
-        with open(self.filename, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerows(self.headlines)
+        try:
+            with open(self.filename, 'w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                for row in self.headlines:
+                    writer.writerow(row)
+        except Exception as e:
+            print(f"Error writing to CSV file: {e}")
 
     def headline_is_similar(self, headline):
         headline = headline.replace('\n', ' ')  # Remove newline characters
