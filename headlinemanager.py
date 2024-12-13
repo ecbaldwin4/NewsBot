@@ -43,14 +43,14 @@ class HeadlineManager:
             compare_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{hd[0]}")
             compare_headline = np.array(compare_headline['embedding']).reshape(1,-1)
             similarity = cosine_similarity(encoded_headline, compare_headline)
+            print(headline, "::", hd)
+            print("Similarity: ", similarity)
             if similarity > SIMILARITY_THRESHOLD:
-                print(headline, "::", hd)
+                print(headline, "::", hd, "\n")
                 print("Not posting. Too similar: ", similarity)
                 return False
         self.headlines.append((headline, time.time()))
         self.write_csv()
-        print(headline, "::", hd)
-        print("Similarity: ", similarity)
         print("Posting.")
         return True
 
