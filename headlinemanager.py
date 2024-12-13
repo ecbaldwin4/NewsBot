@@ -16,13 +16,14 @@ class HeadlineManager:
             with open(self.filename, 'r', encoding='utf-8') as file:
                 reader = csv.reader(file)
                 headlines = [(row[0], float(row[1])) for row in reader]
-                return self.remove_old_headlines(headlines)
+                return headlines
         except FileNotFoundError:
             return []
 
-    def remove_old_headlines(self, headlines):
+    def remove_old_headlines(self):
         current_time = time.time()
-        return [hd for hd in headlines if current_time - hd[1] < 172800]
+        self.headlines = [hd for hd in self.headlines if current_time - hd[1] < 86400]
+        self.write_csv()
 
     def write_csv(self):
         try:
@@ -35,7 +36,7 @@ class HeadlineManager:
 
     def headline_is_similar(self, headline):
         headline = headline.replace('\n', ' ')  # Remove newline characters
-        self.headlines = self.remove_old_headlines(self.headlines)
+        self.remove_old_headlines()
         encoded_headline = ollama.embeddings(model='nomic-embed-text', prompt=f"{headline}")
         encoded_headline = np.array(encoded_headline['embedding']).reshape(1,-1)
         for hd in self.headlines:
@@ -48,6 +49,14 @@ class HeadlineManager:
                 return False
         self.headlines.append((headline, time.time()))
         self.write_csv()
-        print(headline)
+        print(headline, "::", hd)
+        print("Similarity: ", similarity)
         print("Posting.")
         return True
+
+    def count_old_headlines(self):
+        current_time = time.time()
+        with open(self.filename, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            old_headlines = sum(1 for row in reader if current_time - float(row[1]) > 86400)
+        return old_headlines

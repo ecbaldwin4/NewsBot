@@ -7,6 +7,10 @@ import time
 import article_json_getter
 from dotenv import load_dotenv
 
+#experimental
+import test_chat_model
+from test_chat_model import LlamaChat
+
 load_dotenv('.env')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 TARGET_CHANNELS_FILE = 'data/target_channels.csv'
@@ -142,6 +146,25 @@ async def hello(ctx):
         await ctx.send(f'Hello {ctx.author.mention}! I am online.')
     except discord.Forbidden:
         print("Bot does not have permission to send messages in this channel.")
+
+chat_cooldowns = {}
+
+@bot.command(name='chat')
+@commands.cooldown(1, 300, commands.BucketType.user)  # 1 use per 300 seconds (5 minutes) per user
+async def chat(ctx, *, message):
+    # Send the message to Llama 3 and get the response
+    llama_chat = LlamaChat()
+    response = llama_chat.get_response(message)  # Changed to get_response
+
+    # Send the response back to the Discord channel
+    await ctx.send(response)
+
+@chat.error
+async def chat_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"You're on cooldown! Try again in {error.retry_after:.2f} seconds.")
+    else:
+        raise error
 
 @bot.event
 async def on_message(message):

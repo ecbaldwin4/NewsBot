@@ -64,7 +64,7 @@ class NewsFeed:
 
         return None
 
-    def get_latest_post(self, json_url, author):
+    def get_latest_post(self, json_url, author):    
         # Load banned keywords from CSV
         banned_keywords = set()
         with open('data/banned_keywords.csv', 'r') as file:
@@ -106,9 +106,11 @@ class NewsFeed:
                         self.mark_post_as_seen(post_id)  # Mark as seen but don't return
                         continue
 
-                    if not self.has_seen_post(post_id):
-                        self.mark_post_as_seen(post_id)
-                        return title, url
+                    if self.has_seen_post(post_id):
+                        continue  # Skip posts that have been seen before
+
+                    self.mark_post_as_seen(post_id)
+                    return title, url
 
             return None
 
